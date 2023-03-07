@@ -12,6 +12,9 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class BraveryAlive extends PApplet {
     static String appVersion = "2.3.0";
@@ -74,9 +77,9 @@ public class BraveryAlive extends PApplet {
         o = new PShape();
         clipB = Toolkit.getDefaultToolkit().getSystemClipboard();
         setSides();
-        reroll = new Button(width / 4, height - 50, 50, 50, ELLIPSE, "reroll");
-        copy = new Button((3 * width) / 4, height - 50, 50, 50, ELLIPSE, "copy");
-        export = new Button(width / 2, height - 50, 50, 50, ELLIPSE, "export");
+        reroll = new Button(width / 4f, height - 50, 50, 50, ELLIPSE, "reroll");
+        copy = new Button((3 * width) / 4f, height - 50, 50, 50, ELLIPSE, "copy");
+        export = new Button(width / 2f, height - 50, 50, 50, ELLIPSE, "export");
         buttons = new ArrayList<>();
         buttons.add(reroll);
         buttons.add(copy);
@@ -95,11 +98,10 @@ public class BraveryAlive extends PApplet {
     public void draw() {
         background(220);
         drawBack();
-        copy.drawMe(copy,k, this);
-        isgRotation = reroll.drawMe(reroll,g, this);
-        export.drawMe(export,o, this);
         drawText();
-        text(frameCount,10,10);
+        copy.drawMe(copy,k, this);
+        export.drawMe(export,o, this);
+        isgRotation = reroll.drawMe(reroll,g, this);
         if (isgRotation) {
             g.rotateY((float) 0.03);
             g.rotateX((float) 0.03);
@@ -233,33 +235,32 @@ public class BraveryAlive extends PApplet {
             }
         }
         //Summenors done Images next
-        String url;
-        class MultithreadingDemo extends Thread {
-            public void run() {
-                try {
-                    // Displaying the thread that is running
-                    System.out.println(
-                            "Thread " + Thread.currentThread().getId()
-                                    + " is running");
-                } catch (Exception e) {
-                    // Throwing an exception
-                    System.out.println("Exception is caught");
-                }
-            }
-        }
 
-        for (Integer i : itemID_itemName.keySet()) {
-            url = "http://ddragon.leagueoflegends.com/cdn/" + version + "/img/item/" + i + ".png";
-            itemID_ItemImage.put(i, loadImage(url));
-        }
-        for (Integer i : itemID_itemName_Boots.keySet()) {
-            url = "http://ddragon.leagueoflegends.com/cdn/" + version + "/img/item/" + i + ".png";
-            itemID_ItemImage.put(i, loadImage(url));
-        }
-        for (Integer i : itemID_itemName_Mythic.keySet()) {
-            url = "http://ddragon.leagueoflegends.com/cdn/" + version + "/img/item/" + i + ".png";
-            itemID_ItemImage.put(i, loadImage(url));
-        }
+        ExecutorService exService = Executors.newFixedThreadPool(8);
+
+        itemID_itemName.keySet().forEach(entry ->{
+            exService.execute(() -> {
+                String url = "http://ddragon.leagueoflegends.com/cdn/" + version + "/img/item/" + entry + ".png";
+                itemID_ItemImage.put(entry, loadImage(url));
+            });
+        });
+        itemID_itemName_Boots.keySet().forEach(entry ->{
+            exService.execute(() -> {
+                String url = "http://ddragon.leagueoflegends.com/cdn/" + version + "/img/item/" + entry + ".png";
+                itemID_ItemImage.put(entry, loadImage(url));
+            });
+        });
+        itemID_itemName_Mythic.keySet().forEach(entry ->{
+            exService.execute(() -> {
+                String url = "http://ddragon.leagueoflegends.com/cdn/" + version + "/img/item/" + entry + ".png";
+                itemID_ItemImage.put(entry, loadImage(url));
+            });
+        });
+
+        exService.shutdown();
+        try {
+            exService.awaitTermination(3, TimeUnit.MINUTES);}
+        catch( InterruptedException e) {e.printStackTrace();}
     }
 
 
@@ -351,11 +352,11 @@ public class BraveryAlive extends PApplet {
                 if (itemID_itemName.get(itemID[i]).contains("Runaan's Hurricane"))
                     i--;
             } else {
-                //aktuell keine Begrenzung für ranged Champs
-                //if(itemID_itemName.get(itemID[i]).contains("Hydra")
-                //|| itemID_itemName.get(itemID[i]).contains("Sterak's Gage")){
-                //i--;
-                //}
+                System.out.println("aktuell keine Begrenzung für ranged Champs");
+                /*if(itemID_itemName.get(itemID[i]).contains("Hydra")
+                || itemID_itemName.get(itemID[i]).contains("Sterak's Gage")){
+                i--;
+                }*/
             }
         }
         for (int i = 1; i < itemID.length - 1; i++) {
@@ -439,7 +440,7 @@ public class BraveryAlive extends PApplet {
             textSize(32);
             fill(0);
             textAlign(CENTER);
-            text("Test Your Braverieness", width / 2, height / 2 - 45);
+            text("Test Your Braverieness", width / 2f, height / 2f - 45);
             textSize(14);
             textAlign(CORNER);
             text("Version " + appVersion, 3, height - 3);
@@ -450,18 +451,18 @@ public class BraveryAlive extends PApplet {
             textAlign(CORNER);
             fill(222, 235, 247);
             text("Champion", 30, 53);
-            text(split[0], width / 2, 53);
+            text(split[0], width / 2f, 53);
             text("Runepath", 30, 103);
-            text(split[1], width / 2, 103);
+            text(split[1], width / 2f, 103);
             text("Summenors", 30, 153);
-            text(split[2] + ", " + split[3], width / 2, 153);
+            text(split[2] + ", " + split[3], width / 2f, 153);
             text("Spell to Max", 30, 203);
-            text(split[4], width / 2, 203);
+            text(split[4], width / 2f, 203);
             textSize(36);
             fill(197, 90, 17, 1);
             textSize(42);
             textAlign(CENTER);
-            text("Items", width / 2, 260);
+            text("Items", width / 2f, 260);
             textSize(32);
             fill(0);
             textAlign(CORNER);
