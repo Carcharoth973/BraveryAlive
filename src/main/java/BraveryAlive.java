@@ -238,24 +238,18 @@ public class BraveryAlive extends PApplet {
 
         ExecutorService exService = Executors.newFixedThreadPool(8);
 
-        itemID_itemName.keySet().forEach(entry ->{
-            exService.execute(() -> {
-                String url = "http://ddragon.leagueoflegends.com/cdn/" + version + "/img/item/" + entry + ".png";
-                itemID_ItemImage.put(entry, loadImage(url));
-            });
-        });
-        itemID_itemName_Boots.keySet().forEach(entry ->{
-            exService.execute(() -> {
-                String url = "http://ddragon.leagueoflegends.com/cdn/" + version + "/img/item/" + entry + ".png";
-                itemID_ItemImage.put(entry, loadImage(url));
-            });
-        });
-        itemID_itemName_Mythic.keySet().forEach(entry ->{
-            exService.execute(() -> {
-                String url = "http://ddragon.leagueoflegends.com/cdn/" + version + "/img/item/" + entry + ".png";
-                itemID_ItemImage.put(entry, loadImage(url));
-            });
-        });
+        itemID_itemName.keySet().forEach(entry -> exService.execute(() -> {
+            String url = "http://ddragon.leagueoflegends.com/cdn/" + version + "/img/item/" + entry + ".png";
+            itemID_ItemImage.put(entry, loadImage(url));
+        }));
+        itemID_itemName_Boots.keySet().forEach(entry -> exService.execute(() -> {
+            String url = "http://ddragon.leagueoflegends.com/cdn/" + version + "/img/item/" + entry + ".png";
+            itemID_ItemImage.put(entry, loadImage(url));
+        }));
+        itemID_itemName_Mythic.keySet().forEach(entry -> exService.execute(() -> {
+            String url = "http://ddragon.leagueoflegends.com/cdn/" + version + "/img/item/" + entry + ".png";
+            itemID_ItemImage.put(entry, loadImage(url));
+        }));
 
         exService.shutdown();
         try {
