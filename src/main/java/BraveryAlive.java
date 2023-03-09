@@ -513,8 +513,6 @@ public class BraveryAlive extends PApplet {
                 case 3 -> dices[i].rotateX(PI / 2);
                 case 4 -> dices[i].rotateY((float) (PI * 1.5));
                 case 5 -> dices[i].rotateX(PI);
-                case 0, default -> {
-                }
             }
 
             g.addChild(dices[i]);
