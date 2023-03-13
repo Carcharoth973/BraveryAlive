@@ -6,8 +6,8 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.Toolkit;
 
 public class BraveryAlive extends PApplet {
-    static String appVersion = "3.0.0";
-    static final String provenPatch = "12.10";
+    static String appVersion = "3.0.1";
+    static final String provenPatch = "13.5.1";
     String gameVersion;
     LogicOperator logicOperator;
     PFont calibri;
@@ -108,27 +108,29 @@ public class BraveryAlive extends PApplet {
 
     //copy build data into clipboard to be used in League client -> item build
     public void exportToLeague() {
-        String h2;
-        ArrayList<Integer> itemIDs = logicOperator.getItemIdFromName( new ArrayList<>(build.subList(5,11)));
-        try {
-            h2 = "{\"title\":\"" + build.get(0).name() + " - " + build.get(1).name() + " - " + build.get(4).name()
-                    + "\",\"associatedMaps\":[11],\"associatedChampions\":[" + logicOperator.getChampIdFromName(build.get(0).name())
-                    + "],\"blocks\":[{\"items\":["
-                    + "{\"id\":\"" + itemIDs.get(0) + "\",\"count\":1}"
-                    + ",{\"id\":\"" + itemIDs.get(1) + "\",\"count\":1}"
-                    + ",{\"id\":\"" + itemIDs.get(2) + "\",\"count\":1}"
-                    + ",{\"id\":\"" + itemIDs.get(3) + "\",\"count\":1}"
-                    + ",{\"id\":\"" + itemIDs.get(4) + "\",\"count\":1}"
-                    + ",{\"id\":\"" + itemIDs.get(5) + "\",\"count\":1}"
-                    + "],\"type\":\"" + build.get(0).name() + "'s Wasted Gaming Build\"}"
-                    + ",{\"items\":[{\"id\":\"2003\",\"count\":1}],\"type\":\"Consumables\"}]}"
-            ;
-        } catch (ArrayIndexOutOfBoundsException a) {
-            h2 = "";
-            println("exproterror");
+        if(!build.isEmpty()) {
+            String h2;
+            ArrayList<Integer> itemIDs = logicOperator.getItemIdFromName(new ArrayList<>(build.subList(5, 11)));
+            try {
+                h2 = "{\"title\":\"" + build.get(0).name() + " - " + build.get(1).name() + " - " + build.get(4).name()
+                        + "\",\"associatedMaps\":[11],\"associatedChampions\":[" + logicOperator.getChampIdFromName(build.get(0).name())
+                        + "],\"blocks\":[{\"items\":["
+                        + "{\"id\":\"" + itemIDs.get(0) + "\",\"count\":1}"
+                        + ",{\"id\":\"" + itemIDs.get(1) + "\",\"count\":1}"
+                        + ",{\"id\":\"" + itemIDs.get(2) + "\",\"count\":1}"
+                        + ",{\"id\":\"" + itemIDs.get(3) + "\",\"count\":1}"
+                        + ",{\"id\":\"" + itemIDs.get(4) + "\",\"count\":1}"
+                        + ",{\"id\":\"" + itemIDs.get(5) + "\",\"count\":1}"
+                        + "],\"type\":\"" + build.get(0).name() + "'s Wasted Gaming Build\"}"
+                        + ",{\"items\":[{\"id\":\"2003\",\"count\":1}],\"type\":\"Consumables\"}]}"
+                ;
+            } catch (ArrayIndexOutOfBoundsException a) {
+                h2 = "";
+                println("exproterror");
+            }
+            StringSelection copyText = new StringSelection(h2);
+            clipB.setContents(copyText, null);
         }
-        StringSelection copyText = new StringSelection(h2);
-        clipB.setContents(copyText, null);
     }
 
     //copy build data into clipboard to be used in Discord chat
