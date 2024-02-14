@@ -6,14 +6,14 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.Toolkit;
 
 public class BraveryAlive extends PApplet {
-    static String appVersion = "3.0.1";
-    static final String provenPatch = "13.5.1";
+    static String appVersion = "3.1.0";
+    static final String provenPatch = "14.3.1";
     String gameVersion;
     LogicOperator logicOperator;
     PFont calibri;
     PShape g,k,o;
     Clipboard clipB;
-    Button reroll, copy, export;
+    Button roll, copy, export;
     ArrayList<Button> buttons;
     ArrayList<Pair> build;
 
@@ -43,11 +43,11 @@ public class BraveryAlive extends PApplet {
         createExport();
         createDice();
 
-        reroll = new Button(width / 4f, height - 50, 50, 50, ELLIPSE, CENTER,CORNER,g);
+        roll = new Button(width / 4f, height - 50, 50, 50, ELLIPSE, CENTER,CORNER,g);
         copy = new Button((3 * width) / 4f, height - 50, 50, 50, ELLIPSE, CENTER,CENTER,k);
         export = new Button(width / 2f, height - 50, 50, 50, ELLIPSE, CENTER,CENTER,o);
         buttons = new ArrayList<>();
-        buttons.add(reroll);
+        buttons.add(roll);
         buttons.add(copy);
         buttons.add(export);
 
@@ -62,9 +62,9 @@ public class BraveryAlive extends PApplet {
         for(Button b: buttons){
             b.drawMe(this);
         }
-        if (reroll.inMargin(this)) {
-            reroll.getShape().rotateY(0.03f);
-            reroll.getShape().rotateX(0.03f);
+        if (roll.inMargin(this)) {
+            roll.getShape().rotateY(0.03f);
+            roll.getShape().rotateX(0.03f);
         }
     }
 
@@ -78,7 +78,7 @@ public class BraveryAlive extends PApplet {
     @Override
     public void mouseReleased() {
         for (Button b : buttons) {
-            if (b == reroll) {
+            if (b == roll) {
                 if (b.inMargin(this) && b.getPressed())
                     rollNewBuild();}
             if (b == copy) {
@@ -96,14 +96,13 @@ public class BraveryAlive extends PApplet {
     //get a new randomly determined build
     private void rollNewBuild() {
         build.clear();
-        build.add(new Pair(logicOperator.getNewChamp(),null));
+        build.add(logicOperator.getNewChamp());
         build.add(new Pair(logicOperator.getNewMastery(), null));
         build.add(new Pair(logicOperator.getNewSummonerSpell("none"), null));
         build.add(new Pair(logicOperator.getNewSummonerSpell(build.get(2).name()), null));
         build.add(new Pair(logicOperator.getNewSkillMaxing(),null));
         build.add(logicOperator.getNewBoots());
-        build.addAll(logicOperator.getNewLegendary(build.get(0).name(),4));
-        build.add(logicOperator.getNewMythic());
+        build.addAll(logicOperator.getNewLegendary(build.get(0).name(),5));
     }
 
     //copy build data into clipboard to be used in League client -> item build
@@ -126,7 +125,7 @@ public class BraveryAlive extends PApplet {
                 ;
             } catch (ArrayIndexOutOfBoundsException a) {
                 h2 = "";
-                println("exproterror");
+                println("exportError");
             }
             StringSelection copyText = new StringSelection(h2);
             clipB.setContents(copyText, null);
@@ -139,8 +138,8 @@ public class BraveryAlive extends PApplet {
             String h2;
             try {
                 h2 = "Champion\t\t    " + build.get(0).name()
-                        + "\nRunepath\t\t      " + build.get(1).name()
-                        + "\nSummenors\t\t " + build.get(2).name() + " " + build.get(3).name()
+                        + "\nRune Path\t\t      " + build.get(1).name()
+                        + "\nSummoners\t\t " + build.get(2).name() + " " + build.get(3).name()
                         + "\nSpell to max\t\t " + build.get(4).name()
                         + "\nItems\t\t\t\t\t  " + build.get(5).name()
                         + "\n\t\t\t\t\t\t\t\t" + build.get(6).name()
@@ -172,15 +171,16 @@ public class BraveryAlive extends PApplet {
             textAlign(RIGHT);
             text("Last proven patch: " + provenPatch, width - 3, height - 3);
         } else {
-
             textSize(32);
             textAlign(CORNER);
+            imageMode(CORNER);
             fill(222, 235, 247);
             text("Champion", posXCategoryTitle, 53);
             text(build.get(0).name(), posXCategory, 53);
-            text("Runepath", posXCategoryTitle, 103);
+            image(build.get(0).image(), posXCategory - 40, 28, 32, 32);
+            text("Rune Path", posXCategoryTitle, 103);
             text(build.get(1).name(), posXCategory, 103);
-            text("Summenors", posXCategoryTitle, 153);
+            text("Summoner", posXCategoryTitle, 153);
             text(build.get(2).name() + ", " + build.get(3).name(), posXCategory, 153);
             text("Spell to Max", posXCategoryTitle, 203);
             text(build.get(4).name(), posXCategory, 203);
@@ -192,7 +192,6 @@ public class BraveryAlive extends PApplet {
             textSize(32);
             fill(0);
             textAlign(CORNER);
-            imageMode(CORNER);
             text(build.get(5).name(), posXItems, 300);
             image(build.get(5).image(), posXItems - 40, 275, 32, 32);
             text(build.get(6).name(), posXItems, 340);

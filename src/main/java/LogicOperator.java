@@ -19,40 +19,38 @@ import java.util.concurrent.TimeUnit;
 //class for all logic Operations including data load/transform, rolling, export string generation
 public class LogicOperator {
 
-    //class wide used Random instance
+    //class-wide used Random instance
     private final Random random;
-    //class wide used ExecutorService instance
+    //class-wide used ExecutorService instance
     ExecutorService executorService;
     //current game version used in all urls
     private final String gameVersion;
     private final HashMap<String, Integer> champName_champRange, champName_champId, itemName_itemId;
     private final ArrayList<String> summonerSpells;
-    private final JSONObject allItems;
-    private final HashMap<String, PImage> bootsName_bootsImage, mythicName_mythicImage, legendaryName_legendaryImage;
+    private final Map<String, PImage> bootsName_bootsImage, legendaryName_legendaryImage, champName_champImage;
 
     LogicOperator() {
         random = new Random();
         executorService = Executors.newFixedThreadPool(16);
         gameVersion = loadGameVersion();
-
-        allItems = loadAllItems();
-        champName_champId = loadChampName_champId();
-        itemName_itemId = loadItemName_itemId();
-        champName_champRange = loadChampName_champRange();
+        JSONObject allItems = loadAllItems();
+        JSONObject allChamps = loadAllChamps();
+        champName_champId = loadChampName_champId(allChamps);
+        champName_champRange = loadChampName_champRange(allChamps);
+        champName_champImage = Collections.synchronizedMap(loadChampName_champImage(allChamps));
         summonerSpells = loadSummonerSpells();
-        bootsName_bootsImage = loadBootsName_bootsImage();
-        mythicName_mythicImage = loadMythicName_mythicImage();
-        legendaryName_legendaryImage = loadLegendaryName_legendaryImage();
+        itemName_itemId = loadItemName_itemId(allItems);
+        bootsName_bootsImage = Collections.synchronizedMap(loadBootsName_bootsImage(allItems));
+        legendaryName_legendaryImage = Collections.synchronizedMap(loadLegendaryName_legendaryImage(allItems));
         executorService.shutdown();
         try {
-            System.out.println(
-                    executorService.awaitTermination(3, TimeUnit.MINUTES));
+            System.out.println("Starting image loading...");
+            System.out.println("Image loading success: " + executorService.awaitTermination(3, TimeUnit.MINUTES));
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        System.out.println("Boots count: " + bootsName_bootsImage.size() + "\nBoots:\n" + bootsName_bootsImage
-                        + "\nMythic count: " + mythicName_mythicImage.size() + "\nMythic:\n" + mythicName_mythicImage
-                        + "\nitems count: " + legendaryName_legendaryImage.size() + "\nItems:\n" + legendaryName_legendaryImage);
+        System.out.println("Boots count: " + bootsName_bootsImage.size() + "\nBoots:\n" + bootsName_bootsImage.keySet()
+                        + "\nitems count: " + legendaryName_legendaryImage.size() + "\nItems:\n" + legendaryName_legendaryImage.keySet());
     }
 
     //return current game version from riot server
@@ -89,26 +87,68 @@ public class LogicOperator {
         return stringBuilder.toString();
     }
 
-    //return champs with their range from riot server
-    private HashMap<String, Integer> loadChampName_champRange() {
-        HashMap<String, Integer> returnMap = new HashMap<>();
-        JSONObject champs_json = Objects.requireNonNull(
+    //return all items with their range from riot server
+    private JSONObject loadAllItems() {
+        JSONObject returnJsonObject = new JSONObject();
+        HashMap<String,ArrayList<String>> discardedItems = new HashMap<>() {{
+            put("map is not SR", new ArrayList<>());
+            put("has consumable", new ArrayList<>());
+            put("tag = Trinket", new ArrayList<>());
+            put("tag = Jungle", new ArrayList<>());
+            put("tag = GoldPer", new ArrayList<>());
+            put("tag = Lane", new ArrayList<>());
+        }};
+        JSONObject allItems = Objects.requireNonNull(
+                        loadJsonObject("http://ddragon.leagueoflegends.com/cdn/" + gameVersion + "/data/en_US/item.json"))
+                .getJSONObject("data");
+        for (String s : allItems.keySet()) {
+            if (!(boolean) allItems.query("/" + s + "/maps/11"))
+                discardedItems.get("map is not SR").add(allItems.getJSONObject(s).getString("name"));
+            else if (allItems.getJSONObject(s).has("consumed"))
+                discardedItems.get("has consumable").add(allItems.getJSONObject(s).getString("name"));
+            else if (allItems.getJSONObject(s).getJSONArray("tags").toString().contains("Trinket"))
+                discardedItems.get("tag = Trinket").add(allItems.getJSONObject(s).getString("name"));
+            else if (allItems.getJSONObject(s).getJSONArray("tags").toString().contains("Jungle"))
+                discardedItems.get("tag = Jungle").add(allItems.getJSONObject(s).getString("name"));
+            else if (allItems.getJSONObject(s).getJSONArray("tags").toString().contains("GoldPer"))
+                discardedItems.get("tag = GoldPer").add(allItems.getJSONObject(s).getString("name"));
+            else if (allItems.getJSONObject(s).getJSONArray("tags").toString().contains("Lane"))
+                discardedItems.get("tag = Lane").add(allItems.getJSONObject(s).getString("name"));
+            else
+                returnJsonObject.put(s, allItems.getJSONObject(s));
+        }
+        for(String s: discardedItems.keySet()){
+            System.out.println("Discarded Items for Reason: " + s + " Size: "+ discardedItems.get(s).size()+ "\n" + discardedItems.get(s));
+        }
+        return returnJsonObject;
+    }
+
+    //return all items with their range from riot server
+    private JSONObject loadAllChamps() {
+        JSONObject returnJsonObject = new JSONObject();
+        JSONObject allChamps = Objects.requireNonNull(
                         loadJsonObject("http://ddragon.leagueoflegends.com/cdn/" + gameVersion + "/data/en_US/champion.json"))
                 .getJSONObject("data");
-        for (String s : champs_json.keySet()) {
-            returnMap.put((String) champs_json.query("/" + s + "/name"), (Integer) champs_json.query("/" + s + "/stats/attackrange"));
+        for (String s : allChamps.keySet()) {
+            returnJsonObject.put(s, allChamps.getJSONObject(s));
+        }
+        return returnJsonObject;
+    }
+
+    //return champs with their range from riot server
+    private HashMap<String, Integer> loadChampName_champRange(JSONObject champJson) {
+        HashMap<String, Integer> returnMap = new HashMap<>();
+        for (String s : champJson.keySet()) {
+            returnMap.put((String) champJson.query("/" + s + "/name"), (Integer) champJson.query("/" + s + "/stats/attackrange"));
         }
         return returnMap;
     }
 
     //return champs with their range from riot server
-    private HashMap<String, Integer> loadChampName_champId() {
+    private HashMap<String, Integer> loadChampName_champId(JSONObject champJson) {
         HashMap<String, Integer> returnMap = new HashMap<>();
-        JSONObject champs_json = Objects.requireNonNull(
-                        loadJsonObject("http://ddragon.leagueoflegends.com/cdn/" + gameVersion + "/data/en_US/champion.json"))
-                .getJSONObject("data");
-        for (String s : champs_json.keySet()) {
-            returnMap.put((String) champs_json.query("/" + s + "/name"),  champs_json.getJSONObject(s).getInt("key"));
+        for (String s : champJson.keySet()) {
+            returnMap.put((String) champJson.query("/" + s + "/name"),  champJson.getJSONObject(s).getInt("key"));
         }
         return returnMap;
     }
@@ -126,83 +166,72 @@ public class LogicOperator {
         return returnList;
     }
 
-    //return items filtered to be boots from riot server
-    private HashMap<String, PImage> loadBootsName_bootsImage() {
+    //return items filtered to be boots from riot server with image data
+    private HashMap<String, PImage> loadChampName_champImage(JSONObject allChamps) {
+        HashMap<String, String> outputHashMap = new HashMap<>();
+        for (String s : allChamps.keySet()) {
+            outputHashMap.put((String) allChamps.query("/" + s + "/name"), s);
+        }
+        return loadImages(outputHashMap, "champion");
+    }
+
+    //return items filtered to be boots from riot server with image data
+    private HashMap<String, PImage> loadBootsName_bootsImage(JSONObject allItems) {
         HashMap<String, String> outputHashMap = new HashMap<>();
         for (String s : allItems.keySet()) {
             if (allItems.getJSONObject(s).getJSONArray("tags").toString().contains("Boots")
                     && !allItems.getJSONObject(s).has("into"))
                 outputHashMap.put((String) allItems.query("/" + s + "/name"), s);
         }
-        return loadItemImages(outputHashMap);
+        return loadImages(outputHashMap, "item");
     }
 
-    //return items filtered to be mythic items from riot server
-    private HashMap<String, PImage> loadMythicName_mythicImage() {
-        HashMap<String, String> outputHashMap = new HashMap<>();
-        for (String s : allItems.keySet()) {
-            if (allItems.getJSONObject(s).getString("description").contains("Mythic Passive:")
-                    && !allItems.getJSONObject(s).has("inStore") //inStore only exists if false
-            )
-                outputHashMap.put((String) allItems.query("/" + s + "/name"), s);
-        }
-        return loadItemImages(outputHashMap);
-    }
-
-    // return items filtered to be legendary items from riot server
-    private HashMap<String, PImage> loadLegendaryName_legendaryImage() {
+    // return items filtered to be legendary items from riot server with image data
+    private HashMap<String, PImage> loadLegendaryName_legendaryImage(JSONObject allItems) {
         HashMap<String, String> outputHashMap = new HashMap<>();
         for (String s : allItems.keySet()) {
             String helpName = (String)allItems.query("/" + s + "/name");
             if (    !allItems.getJSONObject(s).getJSONArray("tags").toString().contains("Boots")
-                    && !allItems.getJSONObject(s).getString("description").contains("Mythic Passive:")
                     && !allItems.getJSONObject(s).has("requiredAlly")
                     && !allItems.getJSONObject(s).has("requiredChampion")
-                    && !allItems.getJSONObject(s).has("inStore") //inStore only exists if false
-                    && !allItems.getJSONObject(s).has("into")
-                    && !bootsName_bootsImage.containsKey(helpName)
-                    && !mythicName_mythicImage.containsKey(helpName))
-                outputHashMap.put(helpName, s);
+                    && !allItems.getJSONObject(s).has("inStore")
+                    && !allItems.getJSONObject(s).has("consumeOnFull")
+                    && !bootsName_bootsImage.containsKey(helpName))
+                if((allItems.getJSONObject(s).has("into"))) {
+                    boolean allRequireAlly = true;
+                    for (Object st : allItems.getJSONObject(s).getJSONArray("into").toList()) {
+                        if(allItems.has((String)st))
+                            if (!allItems.getJSONObject((String)st).has("requiredAlly")) {
+                                allRequireAlly = false;
+                                break;
+                            }
+                    }
+                    if (allRequireAlly)
+                        outputHashMap.put(helpName, s);
+                }
+                else
+                    outputHashMap.put(helpName, s);
         }
-        return loadItemImages(outputHashMap);
+        return loadImages(outputHashMap, "item");
     }
 
-    // return items filtered to be legendary items from riot server
-    private HashMap<String, Integer> loadItemName_itemId() {
+    // return all item names with corresponding ids from riot server
+    private HashMap<String, Integer> loadItemName_itemId(JSONObject allItems) {
         HashMap<String, Integer> returnMap = new HashMap<>();
         for (String s : allItems.keySet()) {
-
                 returnMap.put((String)allItems.query("/" + s + "/name"), Integer.parseInt(s));
         }
         return returnMap;
     }
 
-    //return all items with their range from riot server
-    private JSONObject loadAllItems() {
-        JSONObject returnJsonObject = new JSONObject();
-        JSONObject allItems = Objects.requireNonNull(
-                        loadJsonObject("http://ddragon.leagueoflegends.com/cdn/" + gameVersion + "/data/en_US/item.json"))
-                .getJSONObject("data");
-        for (String s : allItems.keySet()) {
-            if ((boolean) allItems.query("/" + s + "/maps/11")
-                    && !allItems.getJSONObject(s).has("consumed")
-                    && !allItems.getJSONObject(s).getJSONArray("tags").toString().contains("Trinket")
-                    && !allItems.getJSONObject(s).getJSONArray("tags").toString().contains("Jungle")
-                    && !allItems.getJSONObject(s).getJSONArray("tags").toString().contains("GoldPer")
-                    && !allItems.getJSONObject(s).getJSONArray("tags").toString().contains("Lane"))
-                returnJsonObject.put(s, allItems.getJSONObject(s));
-        }
-        return returnJsonObject;
-    }
-
     //returns a Map with names and images for items. Expects a Map with item names and ids
-    private HashMap<String, PImage> loadItemImages(HashMap<String, String> inputMap) {
+    private HashMap<String, PImage> loadImages(HashMap<String, String> inputMap, String type) {
         PApplet pApplet = new PApplet();
         HashMap<String, PImage> returnMap = new HashMap<>();
         for (String s : inputMap.keySet()) {
             executorService.execute(() ->
-                    returnMap.put(s, pApplet.loadImage("http://ddragon.leagueoflegends.com/cdn/" + gameVersion + "/img/item/" + inputMap.get(s) + ".png")));
-        };
+                    returnMap.put(s, pApplet.loadImage("http://ddragon.leagueoflegends.com/cdn/" + gameVersion + "/img/" + type + "/" + inputMap.get(s) + ".png")));
+        }
         return returnMap;
     }
 
@@ -260,9 +289,10 @@ public class LogicOperator {
     }
 
     //return a new random champ to pick
-    public String getNewChamp() {
-        String[] champNames = champName_champRange.keySet().toArray(new String[0]);
-        return champNames[random.nextInt(champNames.length)];
+    public Pair getNewChamp() {
+        String value = champName_champImage.keySet().toArray(new String[champName_champImage.size()])
+                [random.nextInt(champName_champImage.size())];
+        return new Pair(value, champName_champImage.get(value));
     }
 
     //return new random boots to pick
@@ -272,44 +302,46 @@ public class LogicOperator {
         return new Pair(value, bootsName_bootsImage.get(value));
     }
 
-    //return a new random mythic item to pick
-    public Pair getNewMythic() {
-        String value = mythicName_mythicImage.keySet().toArray(new String[0])
-                [random.nextInt(mythicName_mythicImage.size())];
-        return new Pair(value, mythicName_mythicImage.get(value));
-    }
-
     //return a new random legendary item to pick
     public ArrayList<Pair> getNewLegendary(String champ, int count) {
         ArrayList<String> outputList = new ArrayList<>();
         ArrayList<Pair> returnList = new ArrayList<>();
         String[] rollingArray = legendaryName_legendaryImage.keySet().toArray(new String[0]);
-        String[] nameHolder = {"Maw of Malmortius","Archangel's Staff","Sterak's Gage"};
+        String[] nameHolder = {"Verdant Barrier","Banshee's Veil","Edge of Night"};
+        ArrayList<String> annulGroup = new ArrayList<>(Arrays.asList(nameHolder));
+        nameHolder = new String[]{"Blighting Jewel","Cryptbloom","Terminus", "Void Staff"};
+        ArrayList<String> blightGroup = new ArrayList<>(Arrays.asList(nameHolder));
+        nameHolder = new String[]{"Last Whisper","Black Cleaver","Serylda's Grudge","Lord Dominik's Regards","Mortal Reminder","Terminus"};
+        ArrayList<String> fatalityGroup = new ArrayList<>(Arrays.asList(nameHolder));
+        nameHolder = new String[]{"Profane Hydra","Ravenous Hydra","Titanic Hydra","Stridebreaker"};
+        ArrayList<String> hydraGroup = new ArrayList<>(Arrays.asList(nameHolder));
+        nameHolder = new String[]{"Sunfire Aegis","Hollow Radiance"};
+        ArrayList<String> immolateGroup = new ArrayList<>(Arrays.asList(nameHolder));
+        nameHolder = new String[]{"Maw of Malmortius","Archangel's Staff","Immortal Shieldbow","Sterak's Gage"};
         ArrayList<String> lifelineGroup = new ArrayList<>(Arrays.asList(nameHolder));
         nameHolder = new String[]{"Winter's Approach","Archangel's Staff","Manamune"};
-        ArrayList<String> aweGroup = new ArrayList<>(Arrays.asList(nameHolder));;
-        nameHolder = new String[]{"Ravenous Hydra","Titanic Hydra"};
-        ArrayList<String> hydraGroup = new ArrayList<>(Arrays.asList(nameHolder));;
-        nameHolder = new String[]{"Silvermere Dawn","Mercurial Scimitar"};
-        ArrayList<String> qssGroup = new ArrayList<>(Arrays.asList(nameHolder));;
-        nameHolder = new String[]{"Navori Quickblades","Spear of Shojin"};
-        ArrayList<String> cdrGroupOne = new ArrayList<>(Arrays.asList(nameHolder));;
-        nameHolder = new String[]{"Guinsoo's Rageblade","Infinity Edge","Navori Quickblades"};
-        ArrayList<String> criticalGroup = new ArrayList<>(Arrays.asList(nameHolder));
-        nameHolder = new String[]{"Serylda's Grudge","Lord Dominik's Regards","Mortal Reminder"};
-        ArrayList<String> penetrationGroup = new ArrayList<>(Arrays.asList(nameHolder));
+        ArrayList<String> manaflowGroup = new ArrayList<>(Arrays.asList(nameHolder));
+        nameHolder = new String[]{"Dead Man's Plate","Trailblazer"};
+        ArrayList<String> momentumGroup = new ArrayList<>(Arrays.asList(nameHolder));
+        nameHolder = new String[]{"Essence Reaver","Iceborn Gauntlet","Lich Bane","Trinity Force"};
+        ArrayList<String> spellbladeGroup = new ArrayList<>(Arrays.asList(nameHolder));
+        nameHolder = new String[]{"Navori Quickblades","Infinity Edge"};
+        ArrayList<String> unboundedGroupOne = new ArrayList<>(Arrays.asList(nameHolder));
         nameHolder = new String[]{"Runaan's Hurricane"};
         ArrayList<String> rangedOnly = new ArrayList<>(Arrays.asList(nameHolder));
         for (int i = 0; i<count; i++){
             String value = rollingArray[random.nextInt(rollingArray.length)];
             if (outputList.contains(value)
-                || (lifelineGroup.contains(value) && !Collections.disjoint(outputList,lifelineGroup))
-                || (aweGroup.contains(value) && !Collections.disjoint(outputList,aweGroup))
+                || (annulGroup.contains(value) && !Collections.disjoint(outputList,annulGroup))
+                || (blightGroup.contains(value) && !Collections.disjoint(outputList,blightGroup))
+                || (fatalityGroup.contains(value) && !Collections.disjoint(outputList,fatalityGroup))
                 || (hydraGroup.contains(value) && !Collections.disjoint(outputList,hydraGroup))
-                || (qssGroup.contains(value) && !Collections.disjoint(outputList,qssGroup))
-                || (cdrGroupOne.contains(value) && !Collections.disjoint(outputList,cdrGroupOne))
-                || (criticalGroup.contains(value) && !Collections.disjoint(outputList,criticalGroup))
-                || (penetrationGroup.contains(value) && !Collections.disjoint(outputList,penetrationGroup))
+                || (immolateGroup.contains(value) && !Collections.disjoint(outputList,immolateGroup))
+                || (lifelineGroup.contains(value) && !Collections.disjoint(outputList,lifelineGroup))
+                || (manaflowGroup.contains(value) && !Collections.disjoint(outputList,manaflowGroup))
+                || (momentumGroup.contains(value) && !Collections.disjoint(outputList,momentumGroup))
+                || (spellbladeGroup.contains(value) && !Collections.disjoint(outputList,spellbladeGroup))
+                || (unboundedGroupOne.contains(value) && !Collections.disjoint(outputList,unboundedGroupOne))
                 || (champName_champRange.get(champ) < 275 && rangedOnly.contains(value))
             ){
                 i--;
