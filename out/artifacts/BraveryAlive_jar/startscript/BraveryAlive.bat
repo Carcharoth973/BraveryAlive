@@ -1,0 +1,1 @@
+wscript.exe "invisible.vbs" "starter_helper.bat"
