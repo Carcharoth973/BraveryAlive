@@ -8,7 +8,7 @@ Falls die Anwendung nicht über das Skript ausgeführt werden soll, reicht es di
 Die Datei `startscript\BraveryAlive.bat` öffenen  
 
 ### Variante 2 - manuell:  
-Die Datei kann in der cmd via `java -jar BraveryAlive.jar´ starten.  
+Die Datei kann in der cmd via `java -jar BraveryAlive.jar` starten.  
 Dazu muss innerhalb der cmd zum entsprechenden Ordner der Datei navigiert werden.  
 
 Troubleshooting 
