@@ -1,3 +1,4 @@
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 import processing.core.PApplet;
@@ -97,6 +98,8 @@ public class LogicOperator {
             put("tag = Jungle", new ArrayList<>());
             put("tag = GoldPer", new ArrayList<>());
             put("tag = Lane", new ArrayList<>());
+            put("dedicated removal", new ArrayList<>());
+            put("inStore null/false", new ArrayList<>());
         }};
         JSONObject allItems = Objects.requireNonNull(
                         loadJsonObject("http://ddragon.leagueoflegends.com/cdn/" + gameVersion + "/data/en_US/item.json"))
@@ -114,6 +117,10 @@ public class LogicOperator {
                 discardedItems.get("tag = GoldPer").add(allItems.getJSONObject(s).getString("name"));
             else if (allItems.getJSONObject(s).getJSONArray("tags").toString().contains("Lane"))
                 discardedItems.get("tag = Lane").add(allItems.getJSONObject(s).getString("name"));
+            else if (allItems.getJSONObject(s).getString("name").equals("Empyrean Promise"))
+                discardedItems.get("dedicated removal").add(allItems.getJSONObject(s).getString("name"));
+            else if (allItems.getJSONObject(s).has("inStore"))
+                discardedItems.get("inStore null/false").add(allItems.getJSONObject(s).getString("name"));
             else
                 returnJsonObject.put(s, allItems.getJSONObject(s));
         }
@@ -179,9 +186,12 @@ public class LogicOperator {
     private HashMap<String, PImage> loadBootsName_bootsImage(JSONObject allItems) {
         HashMap<String, String> outputHashMap = new HashMap<>();
         for (String s : allItems.keySet()) {
-            if (allItems.getJSONObject(s).getJSONArray("tags").toString().contains("Boots")
-                    && !allItems.getJSONObject(s).has("into"))
-                outputHashMap.put((String) allItems.query("/" + s + "/name"), s);
+            System.out.println("item=" +s);
+            try{
+                if (allItems.getJSONObject(s).getJSONArray("tags").toString().contains("Boots")
+                        && allItems.getJSONObject(s).getInt("depth") == 2)
+                    outputHashMap.put((String) allItems.query("/" + s + "/name"), s);
+            } catch (JSONException ignored) {} // some items don't have "depth"
         }
         return loadImages(outputHashMap, "item");
     }
@@ -194,7 +204,6 @@ public class LogicOperator {
             if (    !allItems.getJSONObject(s).getJSONArray("tags").toString().contains("Boots")
                     && !allItems.getJSONObject(s).has("requiredAlly")
                     && !allItems.getJSONObject(s).has("requiredChampion")
-                    && !allItems.getJSONObject(s).has("inStore")
                     && !allItems.getJSONObject(s).has("consumeOnFull")
                     && !bootsName_bootsImage.containsKey(helpName))
                 if((allItems.getJSONObject(s).has("into"))) {
@@ -307,11 +316,11 @@ public class LogicOperator {
         ArrayList<String> outputList = new ArrayList<>();
         ArrayList<Pair> returnList = new ArrayList<>();
         String[] rollingArray = legendaryName_legendaryImage.keySet().toArray(new String[0]);
-        String[] nameHolder = {"Verdant Barrier","Banshee's Veil","Edge of Night"};
+        String[] nameHolder = {"Banshee's Veil","Edge of Night"};
         ArrayList<String> annulGroup = new ArrayList<>(Arrays.asList(nameHolder));
-        nameHolder = new String[]{"Blighting Jewel","Cryptbloom","Terminus", "Void Staff"};
+        nameHolder = new String[]{"Bloodletter's Curse","Cryptbloom","Terminus", "Void Staff"};
         ArrayList<String> blightGroup = new ArrayList<>(Arrays.asList(nameHolder));
-        nameHolder = new String[]{"Last Whisper","Black Cleaver","Serylda's Grudge","Lord Dominik's Regards","Mortal Reminder","Terminus"};
+        nameHolder = new String[]{"Black Cleaver","Serylda's Grudge","Lord Dominik's Regards","Mortal Reminder","Terminus"};
         ArrayList<String> fatalityGroup = new ArrayList<>(Arrays.asList(nameHolder));
         nameHolder = new String[]{"Profane Hydra","Ravenous Hydra","Titanic Hydra","Stridebreaker"};
         ArrayList<String> hydraGroup = new ArrayList<>(Arrays.asList(nameHolder));
@@ -323,9 +332,7 @@ public class LogicOperator {
         ArrayList<String> manaflowGroup = new ArrayList<>(Arrays.asList(nameHolder));
         nameHolder = new String[]{"Dead Man's Plate","Trailblazer"};
         ArrayList<String> momentumGroup = new ArrayList<>(Arrays.asList(nameHolder));
-        nameHolder = new String[]{"Essence Reaver","Iceborn Gauntlet","Lich Bane","Trinity Force"};
-        ArrayList<String> spellbladeGroup = new ArrayList<>(Arrays.asList(nameHolder));
-        nameHolder = new String[]{"Navori Quickblades","Infinity Edge"};
+        nameHolder = new String[]{"Iceborn Gauntlet","Lich Bane","Trinity Force"};
         ArrayList<String> unboundedGroupOne = new ArrayList<>(Arrays.asList(nameHolder));
         nameHolder = new String[]{"Runaan's Hurricane"};
         ArrayList<String> rangedOnly = new ArrayList<>(Arrays.asList(nameHolder));
@@ -340,7 +347,6 @@ public class LogicOperator {
                 || (lifelineGroup.contains(value) && !Collections.disjoint(outputList,lifelineGroup))
                 || (manaflowGroup.contains(value) && !Collections.disjoint(outputList,manaflowGroup))
                 || (momentumGroup.contains(value) && !Collections.disjoint(outputList,momentumGroup))
-                || (spellbladeGroup.contains(value) && !Collections.disjoint(outputList,spellbladeGroup))
                 || (unboundedGroupOne.contains(value) && !Collections.disjoint(outputList,unboundedGroupOne))
                 || (champName_champRange.get(champ) < 275 && rangedOnly.contains(value))
             ){

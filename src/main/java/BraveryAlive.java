@@ -6,8 +6,8 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.Toolkit;
 
 public class BraveryAlive extends PApplet {
-    static String appVersion = "3.1.0";
-    static final String provenPatch = "14.3.1";
+    static String appVersion = "3.1.1";
+    static final String provenPatch = "15.4.1";
     String gameVersion;
     LogicOperator logicOperator;
     PFont calibri;
