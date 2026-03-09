@@ -79,13 +79,5 @@ public class WebApplication {
             return "text/plain";
         }
     }
-            } catch (IOException e) {
-                String response = "File not found";
-                exchange.sendResponseHeaders(404, response.length());
-                try (OutputStream os = exchange.getResponseBody()) {
-                    os.write(response.getBytes());
-                }
             }
-        }
-    }
-}
+
