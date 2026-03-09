@@ -1,1 +1,0 @@
-Rare random crashes on first roll. Most likely due to multithreading
